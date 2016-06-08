@@ -1,4 +1,4 @@
-d i th// WHEEL PINS //
+// WHEEL PINS //
 
 // Pins controlling wheel 1
 #define m1p1 3   // Forward
@@ -36,7 +36,7 @@ d i th// WHEEL PINS //
 
 // VARIABLES //
 
-int speed = 255;  // Speed for the wheels to travel at
+int vel = 255;  // Speed for the wheels to travel at
 int colour  = 1;  // Cycles between 1, 2, 3 (RGB)
 int count  = 0;   // Unique objects detected so far
 unsigned int red, green, blue = 0;  // Contains colour sensor values
@@ -82,9 +82,9 @@ void loop() {
 
   // Have the vehicle slow as it approaches the object
   if (avgNear > 500 && !reached)
-    speed = 100;
+    vel = 100;
   else
-    speed = 255;
+    vel = 255;
 
   // Determine the direction to go - Turn if a line is encountered
   if (analogRead(LEFT) >= 900 && analogRead(RIGHT) < 900)
@@ -241,39 +241,39 @@ void loop() {
 
 // Sets the motors moving forward
 void right() {
-  analogWrite(m1p1, speed);
+  analogWrite(m1p1, vel);
   analogWrite(m1p2, LOW);
   analogWrite(m2p1, LOW);
-  analogWrite(m2p2, speed);
+  analogWrite(m2p2, vel);
 }
 
 // Sets the motors moving backward
 void backward() {
-  analogWrite(m1p1, speed);
+  analogWrite(m1p1, vel);
   analogWrite(m1p2, LOW);
-  analogWrite(m2p1, speed);
+  analogWrite(m2p1, vel);
   analogWrite(m2p2, LOW);
 }
 
 void left() {
   analogWrite(m1p1, LOW);
-  analogWrite(m1p2, speed);
-  analogWrite(m2p1, speed);
+  analogWrite(m1p2, vel);
+  analogWrite(m2p1, vel);
   analogWrite(m2p2, LOW);
 }
 
 void forward() {
   analogWrite(m1p1, LOW);
-  analogWrite(m1p2, speed);
+  analogWrite(m1p2, vel);
   analogWrite(m2p1, LOW);
-  analogWrite(m2p2, speed);
+  analogWrite(m2p2, vel);
 }
 
 void halt() {
-  analogWrite(m1p1, speed);
-  analogWrite(m1p2, speed);
-  analogWrite(m2p1, speed);
-  analogWrite(m2p2, speed);
+  analogWrite(m1p1, vel);
+  analogWrite(m1p2, vel);
+  analogWrite(m2p1, vel);
+  analogWrite(m2p2, vel);
 }
 
 void distance() {
