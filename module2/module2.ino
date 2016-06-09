@@ -16,8 +16,6 @@
 
 // COLOUR DETECTOR PINS //
 
-#define S0 10
-#define S1 11
 #define S2 12
 #define S3 13
 #define reading 8
@@ -29,10 +27,12 @@
 #define G 2
 #define B 4
 
+
 // DISTANCE DETECTOR PINS //
 
-#define far A5
-#define near A4
+#define trigPin 10
+#define echoPin 11
+
 
 // VARIABLES //
 
@@ -42,10 +42,8 @@ int count;   // Unique objects detected so far
 unsigned int red, green, blue;  // Contains colour sensor values
 boolean reached;  // Keep track of if an object is seen/has been reached or not
 int wait;
+int dist;
 
-int movingAvgNear[10], movingAvgFar[10];
-int avgCount;
-int avgFar, avgNear;
 bool flag;
 
 // The setup function runs once when you press reset or power the board
@@ -58,8 +56,9 @@ void setup() {
   pinMode(LEFT, INPUT);
   pinMode(RIGHT, INPUT);
 
-  pinMode(S0, OUTPUT);
-  pinMode(S1, OUTPUT);
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, OUTPUT);
+  
   pinMode(S2, OUTPUT);
   pinMode(S3, OUTPUT);
 
@@ -69,12 +68,6 @@ void setup() {
   pinMode(G, OUTPUT);
   pinMode(B, OUTPUT);
 
-  // Setting frequency selection to 20% for colour sensor
-  digitalWrite(S0,HIGH);
-  digitalWrite(S1,LOW);
-
-  Serial.begin(9600);
-
   count = 0;
   red = 0;
   green = 0;
@@ -82,19 +75,20 @@ void setup() {
   wait = 0;
   reached = false;
   flag = false;
-  avgCount = 0;
-  avgFar = 0;
-  avgNear = 0;
+
+  Serial.begin(9600);
 }
 
 // the loop function runs over and over again forever
 void loop() {
 
+  dist = distance();
+  Serial.println(dist);
+
   // MOVING AND NAVIGATION //
 
-
   // Have the vehicle slow as it approaches the object
-  if (avgNear > 500 && !reached)
+  if (dist < 5 && !reached)
     vel = 100;
   else
     vel = 255;
@@ -152,56 +146,6 @@ void loop() {
     colour = 1;
   }
 
-  distance();
-
-  // Long distance detection (all outdated, keeping for debugging)
-
-  /*
-     if (avgCount == 10) {
-     for (int i = 0; i < 10; i++)
-     avg += movingAvg[i];
-  //Serial.println(avg/10);
-
-  if (avg/10 > 70 && avg/10 <= 82)
-  high = 150;
-  else if (avg/10 <= 102)
-  high = 130;
-  else if (avg/10 <= 113)
-  high = 120;
-  else if (avg/10 <= 123)
-  high = 110;
-  else if (avg/10 <= 133)
-  high = 100;
-  else if (avg/10 <= 153)
-  high = 90;
-  else if (avg/10 <= 164)
-  high = 80;
-  else if (avg/10 <= 184)
-  high = 70;
-  else if (avg/10 <= 221)
-  high = 60;
-  else if (avg/10 <= 256)
-  high = 50;
-  else if (avg/10 <= 317)
-  high = 40;
-  else if (avg/10 <= 409)
-  high = 30;
-  else if (avg/10 <= 532)
-  high = 20;
-  else
-  Serial.println("Bad Reading");
-
-  avgCount = 0;
-  avg = 0;
-  }
-
-
-
-  movingAvg[avgCount] = analogRead(far);
-  avgCount++;
-  Serial.println(analogRead(near));
-   */
-
   // This is the easiest to detect. Red goes very low while green and blue go high
   if (red < 70 && green >= 100 && blue >= 100) {
     digitalWrite(R, HIGH);
@@ -211,7 +155,6 @@ void loop() {
     reached = true;
 
     backward();
-    delay(500);
 
     // The hardest detection of all, all three values drop significantly, at roughly equal levels
     // No one value seems particularly favored, any of them may be the lowest/highest
@@ -227,7 +170,6 @@ void loop() {
     reached = true;
 
     backward();
-    delay(500); 
 
     // Even strong blues do not cause as much change as light red. 
     // Red and green values do not go past 100, blue does not dip  very far
@@ -241,40 +183,12 @@ void loop() {
     reached = true;
 
     backward();
-    delay(500);
-
-  } else {
-    digitalWrite(R, LOW);
-    digitalWrite(G, LOW);
-    digitalWrite(B, LOW);
   }
 
-  // TODO: Might want a delay here
+  if (reached)
+    wait++;
+
   delay(50);
-  wait++;
-}
-
-// Sets the motors moving forward
-void right() {
-  analogWrite(m1p1, vel);
-  analogWrite(m1p2, LOW);
-  analogWrite(m2p1, LOW);
-  analogWrite(m2p2, vel);
-}
-
-// Sets the motors moving backward
-void backward() {
-  analogWrite(m1p1, vel);
-  analogWrite(m1p2, LOW);
-  analogWrite(m2p1, vel);
-  analogWrite(m2p2, LOW);
-}
-
-void left() {
-  analogWrite(m1p1, LOW);
-  analogWrite(m1p2, vel);
-  analogWrite(m2p1, vel);
-  analogWrite(m2p2, LOW);
 }
 
 void forward() {
@@ -284,6 +198,27 @@ void forward() {
   analogWrite(m2p2, vel);
 }
 
+void backward() {
+  analogWrite(m1p1, vel);
+  analogWrite(m1p2, LOW);
+  analogWrite(m2p1, vel);
+  analogWrite(m2p2, LOW);
+}
+
+void right() {
+  analogWrite(m1p1, vel);
+  analogWrite(m1p2, LOW);
+  analogWrite(m2p1, LOW);
+  analogWrite(m2p2, vel);
+}
+
+void left() {
+  analogWrite(m1p1, LOW);
+  analogWrite(m1p2, vel);
+  analogWrite(m2p1, vel);
+  analogWrite(m2p2, LOW);
+}
+
 void halt() {
   analogWrite(m1p1, vel);
   analogWrite(m1p2, vel);
@@ -291,51 +226,40 @@ void halt() {
   analogWrite(m2p2, vel);
 }
 
-void distance() {
-  // Keeps a moving average for the distance sensors as they can be a bit wild
-  movingAvgFar[avgCount] = analogRead(far);
-  movingAvgNear[avgCount] = analogRead(near);
-  avgCount = (avgCount + 1) % 10;
-
-  for (int i = 0; i < 10; i++) {
-    avgFar += movingAvgFar[i];
-    avgNear += movingAvgNear[i];
-  }
-
-  avgFar = avgFar / 10;
-  avgNear = avgNear / 10;
-
-
-  Serial.print("Distance: ");
-  if (avgFar >= 80 && avgFar <= 490)
-    Serial.println((int)(9462/(avgFar - 16.92)));
-  else if (avgNear >= 80 && avgNear <= 530)
-    Serial.println(2076/(avgNear - 11));
-  else
-    Serial.println("Out of range");
-
-}
 // Scans for the next object
 void scan() {
   // Complete, do nothing
   if (count == 3) {
     halt();
     delay(1000000000);
+    //TODO: Replace this with a wait for a button input, then show the Serial log
   } else {
-    // Go forward if object detected. Having it travel up a bit so it doesn't have both sensors over tape
-    if (analogRead(far) > 116) {
+    dist = distance();
+    if (!flag) {
+      right();
+      flag = true;
+      delay(1500);
+      scan();
+    } else if (dist < 110) {
       forward();
-      delay(50);
+      delay(250);
       // Otherwise, continue turning
     } else {
-      right();
-      distance();
-      if (!flag)
-        delay(1500);
+      delay(250);
       scan();
-      flag = true;
     }
   }
+}
+
+int distance() {
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+
+  //soundTime = pulseIn(echoPin, HIGH);
+  return pulseIn(echoPin, HIGH) * 171 / 10000;
 }
 
 
