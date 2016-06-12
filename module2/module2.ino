@@ -1,17 +1,19 @@
+// TODO: change the line detector diodes from 220 to 100
+
 // WHEEL PINS //
 
 // Pins controlling wheel 1
-#define m1p1 3   // Forward
-#define m1p2 5   // Backward
+#define m1p1 9   // Forward
+#define m1p2 6   // Backward
 // Pins controlling wheel 2
-#define m2p1 6  // Forward
-#define m2p2 9  // Backward
+#define m2p1 5  // Forward
+#define m2p2 3  // Backward
 
 
 // LINE DETECTOR PINS //
 
-#define RIGHT A0  // Sensor output voltage (left)
-#define LEFT A1 // Sensor output voltage (right)
+#define RIGHT A1  // Sensor output voltage (left)
+#define LEFT A0 // Sensor output voltage (right)
 
 
 // COLOUR DETECTOR PINS //
@@ -42,7 +44,8 @@ int count;   // Unique objects detected so far
 unsigned int red, green, blue;  // Contains colour sensor values
 boolean reached;  // Keep track of if an object is seen/has been reached or not
 int wait;
-int dist;
+float dist;   // Distance in front of car
+int objDist;  // Distance from centre to last detected object
 
 bool flag;
 
@@ -57,7 +60,7 @@ void setup() {
   pinMode(RIGHT, INPUT);
 
   pinMode(trigPin, OUTPUT);
-  pinMode(echoPin, OUTPUT);
+  pinMode(echoPin, INPUT);
   
   pinMode(S2, OUTPUT);
   pinMode(S3, OUTPUT);
@@ -72,9 +75,10 @@ void setup() {
   red = 0;
   green = 0;
   blue = 0;
-  wait = 0;
+  wait = 301;
   reached = false;
   flag = false;
+  bool start = true;
 
   Serial.begin(9600);
 }
@@ -82,30 +86,23 @@ void setup() {
 // the loop function runs over and over again forever
 void loop() {
 
-  dist = distance();
-  Serial.println(dist);
+  distance();
 
   // MOVING AND NAVIGATION //
 
-  // Have the vehicle slow as it approaches the object
-  if (dist < 5 && !reached)
-    vel = 100;
-  else
-    vel = 255;
-
   // Determine the direction to go - Turn if a line is encountered
-  if (analogRead(LEFT) >= 1015 && analogRead(RIGHT) < 1015)
+  if (analogRead(LEFT) >= 1018 && analogRead(RIGHT) < 1018)
     if (reached)
       right();
     else
       left();
-  else if (analogRead(LEFT) < 1015 && analogRead(RIGHT) >= 1015)
+  else if (analogRead(LEFT) < 1018 && analogRead(RIGHT) >= 1018)
     if (reached)
       left();
     else
       right();
   // Turn to the next spoke when the centre is reached
-  else if (analogRead(LEFT) >= 1015 && analogRead(RIGHT) >= 1000 && wait > 300) {
+  else if ((reached && ((dist > (objDist - 2)) && (dist < (objDist + 2)))) || start) {
     // Tick off one object found
     count++;
     // Prepare to find the next object
@@ -122,8 +119,9 @@ void loop() {
       forward();
   }
 
-  //Serial.println(analogRead(LEFT));
-  //Serial.println(analogRead(RIGHT));
+  Serial.print(analogRead(LEFT));
+  Serial.print("      ");
+  Serial.println(analogRead(RIGHT));
 
   // Take a color sensor reading (just from 1 of R, G, or B per cycle)
   if (colour == 1) {
@@ -192,17 +190,21 @@ void loop() {
 }
 
 void forward() {
+  /*
   analogWrite(m1p1, LOW);
   analogWrite(m1p2, vel);
   analogWrite(m2p1, LOW);
   analogWrite(m2p2, vel);
+  */
 }
 
 void backward() {
+  /*
   analogWrite(m1p1, vel);
   analogWrite(m1p2, LOW);
   analogWrite(m2p1, vel);
   analogWrite(m2p2, LOW);
+  */
 }
 
 void right() {
@@ -234,13 +236,15 @@ void scan() {
     delay(1000000000);
     //TODO: Replace this with a wait for a button input, then show the Serial log
   } else {
-    dist = distance();
-    if (!flag) {
+    distance();
+    if (!flag && !start) {
       right();
       flag = true;
       delay(1500);
       scan();
     } else if (dist < 110) {
+      objDist = dist;
+      start = false;
       forward();
       delay(250);
       // Otherwise, continue turning
@@ -251,15 +255,15 @@ void scan() {
   }
 }
 
-int distance() {
+void distance() {
   digitalWrite(trigPin, LOW);
   delayMicroseconds(2);
   digitalWrite(trigPin, HIGH);
   delayMicroseconds(10);
   digitalWrite(trigPin, LOW);
 
-  //soundTime = pulseIn(echoPin, HIGH);
-  return pulseIn(echoPin, HIGH) * 171 / 10000;
+  float soundTime = pulseIn(echoPin, HIGH);
+  dist = soundTime * 171 / 10000;
 }
 
 
